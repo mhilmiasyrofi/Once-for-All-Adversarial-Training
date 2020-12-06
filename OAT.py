@@ -10,7 +10,7 @@ from models.cifar10.resnet_OAT import ResNet34OAT
 from models.svhn.wide_resnet_OAT import WRN16_8OAT
 from models.stl10.wide_resnet_OAT import WRN40_2OAT
 
-from dataloaders.cifar10 import cifar10_dataloaders
+from dataloaders.cifar10 import cifar10_dataloaders, get_adversarial_images
 from dataloaders.svhn import svhn_dataloaders
 from dataloaders.stl10 import stl10_dataloaders
 
@@ -56,11 +56,14 @@ torch.backends.cudnn.benchmark = True
 
 # data loader:
 if args.dataset == 'cifar10':
-    train_loader, val_loader, _ = cifar10_dataloaders(train_batch_size=args.batch_size, num_workers=args.cpus)
+    train_loader, test_loader = cifar10_dataloaders(train_batch_size=args.batch_size, num_workers=args.cpus)
+    train_adv_loader, test_adv_loader = get_adversarial_images(adversarial_data=args.adversarial_data, batch_size=args.batch_size)
 elif args.dataset == 'svhn':
     train_loader, val_loader, _ = svhn_dataloaders(train_batch_size=args.batch_size, num_workers=args.cpus)
 elif args.dataset == 'stl10':
     train_loader, val_loader = stl10_dataloaders(train_batch_size=args.batch_size, num_workers=args.cpus)
+
+
 
 # model:
 if args.encoding in ['onehot', 'dct', 'rand']:
@@ -157,7 +160,13 @@ for epoch in range(start_epoch, args.epochs):
     model.train()
     requires_grad_(model, True)
     accs, accs_adv, losses, lps = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
-    for i, (imgs, labels) in enumerate(train_loader):
+    for i, (batch, adv_batch) in enumerate(zip(train_loader, train_adv_loader)):
+        imgs = batch["input"]
+        labels = batch["target"]
+
+        adv_imgs = adv_batch["input"]
+        adv_labels = adv_batch["target"]
+
         imgs, labels = imgs.cuda(), labels.cuda()
         # sample _lambda:
         if args.sampling == 'ew':
@@ -175,26 +184,35 @@ for epoch in range(start_epoch, args.epochs):
         
         if args.efficient:
             # generate adversarial images:
-            with ctx_noparamgrad_and_eval(model):
-                if args.use2BN:
-                    imgs_adv = attacker.attack(model, imgs[num_zeros:], labels=labels[num_zeros:], _lambda=_lambda[num_zeros:], idx2BN=0)
-                else:
-                    imgs_adv = attacker.attack(model, imgs[num_zeros:], labels=labels[num_zeros:], _lambda=_lambda[num_zeros:], idx2BN=None)
-            # logits for adv imgs:
-            logits_adv = model(imgs_adv.detach(), _lambda[num_zeros:], idx2BN=0)
+            # with ctx_noparamgrad_and_eval(model):
+            #     if args.use2BN:
+            #         imgs_adv = attacker.attack(model, imgs[num_zeros:], labels=labels[num_zeros:], _lambda=_lambda[num_zeros:], idx2BN=0)
+            #     else:
+            #         imgs_adv = attacker.attack(model, imgs[num_zeros:], labels=labels[num_zeros:], _lambda=_lambda[num_zeros:], idx2BN=None)
             
+            # logits for adv imgs:
+            # logits_adv = model(imgs_adv.detach(), _lambda[num_zeros:], idx2BN=0)
+            
+            # logits for adv imgs:
+            logits_adv = model(adv_imgs[num_zeros:], _lambda[num_zeros:], idx2BN=0)
+
             # loss and update:
-            la = F.cross_entropy(logits_adv, labels[num_zeros:], reduction='none') 
+            # la = F.cross_entropy(logits_adv, labels[num_zeros:], reduction='none') 
+            
+            la = F.cross_entropy(logits_adv, adv_labels[num_zeros:], reduction='none' ) 
             la = torch.cat([torch.zeros((num_zeros,)).cuda(), la], dim=0)
         else:
             # generate adversarial images:
-            with ctx_noparamgrad_and_eval(model):
-                imgs_adv = attacker.attack(model, imgs, labels=labels, _lambda=_lambda, idx2BN=idx2BN)
+            # with ctx_noparamgrad_and_eval(model):
+            #     imgs_adv = attacker.attack(model, imgs, labels=labels, _lambda=_lambda, idx2BN=idx2BN)
             # logits for adv imgs:
-            logits_adv = model(imgs_adv.detach(), _lambda, idx2BN=idx2BN)
+            # logits_adv = model(imgs_adv.detach(), _lambda, idx2BN=idx2BN)
+            
+            logits_adv = model(adv_imgs, _lambda, idx2BN=idx2BN)
 
             # loss and update:
-            la = F.cross_entropy(logits_adv, labels, reduction='none') 
+            la = F.cross_entropy(logits_adv, adv_labels, reduction='none') 
+        
         wc = (1-_lambda_flat)
         wa = _lambda_flat
         loss = torch.mean(wc * lc + wa * la) 
@@ -208,9 +226,9 @@ for epoch in range(start_epoch, args.epochs):
         # metrics:
         accs.append((logits.argmax(1) == labels).float().mean().item())
         if args.efficient:
-            accs_adv.append((logits_adv.argmax(1) == labels[num_zeros:]).float().mean().item())
+            accs_adv.append((logits_adv.argmax(1) == adv_labels[num_zeros:]).float().mean().item())
         else:
-            accs_adv.append((logits_adv.argmax(1) == labels).float().mean().item())
+            accs_adv.append((logits_adv.argmax(1) == adv_labels).float().mean().item())
         losses.append(loss.item())
 
         if i % 100 == 0:
@@ -239,7 +257,13 @@ for epoch in range(start_epoch, args.epochs):
         for val_lambda in val_lambdas:
             val_accs[val_lambda], val_accs_adv[val_lambda] = AverageMeter(), AverageMeter()
             
-        for i, (imgs, labels) in enumerate(val_loader):
+        for i, (batch, adv_batch) in enumerate(zip(test_loader,test_adv_loader)):
+            imgs = batch["input"]
+            labels = batch["target"]
+
+            adv_imgs = adv_batch["input"]
+            adv_labels = adv_batch["target"]
+
             imgs, labels = imgs.cuda(), labels.cuda()
 
             for j, val_lambda in enumerate(val_lambdas):
@@ -259,15 +283,16 @@ for epoch in range(start_epoch, args.epochs):
                 val_accs[val_lambda].append((logits.argmax(1) == labels).float().mean().item())
                 # ATA:
                 # generate adversarial images:
-                with ctx_noparamgrad_and_eval(model):
-                    imgs_adv = attacker.attack(model, imgs, labels=labels, _lambda=_lambda, idx2BN=idx2BN)
-                linf_norms = (imgs_adv - imgs).view(imgs.size()[0], -1).norm(p=np.Inf, dim=1)
-                logits_adv = model(imgs_adv.detach(), _lambda, idx2BN)
-                val_accs_adv[val_lambda].append((logits_adv.argmax(1) == labels).float().mean().item())
+                # with ctx_noparamgrad_and_eval(model):
+                #     imgs_adv = attacker.attack(model, imgs, labels=labels, _lambda=_lambda, idx2BN=idx2BN)
+                # linf_norms = (imgs_adv - imgs).view(imgs.size()[0], -1).norm(p=np.Inf, dim=1)
+                # logits_adv = model(imgs_adv.detach(), _lambda, idx2BN)
+                logits_adv = model(adv_imgs, _lambda, idx2BN)
+                val_accs_adv[val_lambda].append((logits_adv.argmax(1) == adv_labels).float().mean().item())
 
     val_str = 'Epoch %d | Validation | Time: %.4f | lr: %s' % (epoch, (time.time()-start_time), current_lr)
     if eval_this_epoch:
-        val_str += ' | linf: %.4f - %.4f\n' % (torch.min(linf_norms).data, torch.max(linf_norms).data)
+        # val_str += ' | linf: %.4f - %.4f\n' % (torch.min(linf_norms).data, torch.max(linf_norms).data)
         for val_lambda in val_lambdas:
             val_str += 'val_lambda%s: TA: %.4f, ATA: %.4f\n' % (val_lambda, val_accs[val_lambda].avg, val_accs_adv[val_lambda].avg)
     print(val_str)
