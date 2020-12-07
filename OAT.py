@@ -17,13 +17,14 @@ from dataloaders.stl10 import stl10_dataloaders
 from utils.utils import *
 from utils.context import ctx_noparamgrad_and_eval
 from utils.sample_lambda import element_wise_sample_lambda, batch_wise_sample_lambda
-from attacks.pgd import PGD
+# from attacks.pgd import PGD
 
 parser = argparse.ArgumentParser(description='cifar10 Training')
 parser.add_argument('--gpu', default='7')
 parser.add_argument('--cpus', default=4)
 # dataset:
 parser.add_argument('--dataset', '--ds', default='cifar10', choices=['cifar10', 'svhn', 'stl10'], help='which dataset to use')
+parser.add_argument('--adversarial_data', '--ad', default='cw', help='which adversarial data to use')
 # optimization parameters:
 parser.add_argument('--batch_size', '-b', default=128, type=int, help='mini-batch size')
 parser.add_argument('--epochs', '-e', default=200, type=int, help='number of total epochs to run')
@@ -149,7 +150,8 @@ else:
         val_TA[val_lambda], val_ATA[val_lambda], best_TA[val_lambda], best_ATA[val_lambda] = [], [], 0, 0
 
 # attacker:
-attacker = PGD(eps=args.eps/255, steps=args.steps, use_FiLM=True)
+# attacker = PGD(eps=args.eps/255, steps=args.steps, use_FiLM=True)
+attacker = None
 
 ## training:
 for epoch in range(start_epoch, args.epochs):
@@ -167,7 +169,7 @@ for epoch in range(start_epoch, args.epochs):
         adv_imgs = adv_batch["input"]
         adv_labels = adv_batch["target"]
 
-        imgs, labels = imgs.cuda(), labels.cuda()
+#         imgs, labels = imgs.cuda(), labels.cuda()
         # sample _lambda:
         if args.sampling == 'ew':
             _lambda_flat, _lambda, num_zeros = element_wise_sample_lambda(args.distribution, args.lambda_choices, encoding_mat, 
@@ -178,6 +180,13 @@ for epoch in range(start_epoch, args.epochs):
             idx2BN = None
 
         # logits for clean imgs:
+#         print("Logits for clean images")
+#         print(type(imgs))
+#         print(type(_lambda))
+#         print(type(idx2BN))
+#         print(imgs.shape)
+#         print(_lambda.shape)
+#         print(idx2BN)        
         logits = model(imgs, _lambda, idx2BN)
         # clean loss:
         lc = F.cross_entropy(logits, labels, reduction='none')
@@ -264,7 +273,7 @@ for epoch in range(start_epoch, args.epochs):
             adv_imgs = adv_batch["input"]
             adv_labels = adv_batch["target"]
 
-            imgs, labels = imgs.cuda(), labels.cuda()
+#             imgs, labels = imgs.cuda(), labels.cuda()
 
             for j, val_lambda in enumerate(val_lambdas):
                 # sample _lambda:
