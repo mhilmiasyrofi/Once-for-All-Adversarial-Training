@@ -62,3 +62,6 @@ datasets/*
 *.zip
 *.pkl
 *.pdf
+
+/results/
+
