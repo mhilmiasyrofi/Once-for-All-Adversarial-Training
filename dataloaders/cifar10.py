@@ -3,9 +3,10 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR10
 from torch.utils.data import DataLoader, Subset
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class Batches():
-    def __init__(self, dataset, batch_size, shuffle, set_random_choices=False, num_workers=0, drop_last=False):
+    def __init__(self, dataset, batch_size, shuffle, set_random_choices=False, num_workers=0, drop_last=True):
         self.dataset = dataset
         self.batch_size = batch_size
         self.set_random_choices = set_random_choices
@@ -36,7 +37,7 @@ def cifar10_dataloaders(train_batch_size=64, test_batch_size=100, num_workers=2,
 
     train_set = CIFAR10(data_dir, train=True, transform=train_transform, download=True)
     # train_loader = DataLoader(train_set, batch_size=train_batch_size, shuffle=True, num_workers=num_workers, drop_last=True, pin_memory=True)
-    train_loader = Batches(train_set, batch_size=train_batch_size, shuffle=True, set_random_choices=False, num_workers=4)
+    train_loader = Batches(train_set, batch_size=train_batch_size, shuffle=True, set_random_choices=False, num_workers=0, drop_last=True)
     
     # train_set = Subset(CIFAR10(data_dir, train=True, transform=train_transform, download=True), list(range(45000)))
     # val_set = Subset(CIFAR10(data_dir, train=True, transform=test_transform, download=True), list(range(45000, 50000)))
@@ -45,7 +46,7 @@ def cifar10_dataloaders(train_batch_size=64, test_batch_size=100, num_workers=2,
 
     test_set = CIFAR10(data_dir, train=False, transform=test_transform, download=True)
     # test_loader = DataLoader(test_set, batch_size=test_batch_size, shuffle=False, num_workers=2, pin_memory=True)
-    test_loader = Batches(train_set, batch_size=test_batch_size, shuffle=True, set_random_choices=False, num_workers=4)
+    test_loader = Batches(train_set, batch_size=test_batch_size, shuffle=True, set_random_choices=False, num_workers=0, drop_last=True)
     
     # return train_loader, val_loader, test_loader
     return train_loader, test_loader
@@ -91,11 +92,11 @@ def get_adversarial_images(adversarial_data="autoattack", batch_size=64) :
     train_adv_set = list(zip(train_adv_images,
         train_adv_labels))
     
-    train_adv_batches = Batches(train_adv_set, batch_size, shuffle=True, set_random_choices=False, num_workers=4)
+    train_adv_batches = Batches(train_adv_set, batch_size, shuffle=True, set_random_choices=False, num_workers=0)
     
     test_robust_set = list(zip(test_robust_images,
         test_robust_labels))
         
-    test_robust_batches = Batches(test_robust_set, batch_size, shuffle=True, num_workers=4)
+    test_robust_batches = Batches(test_robust_set, batch_size, shuffle=True, num_workers=0)
 
     return train_adv_batches, test_robust_batches
