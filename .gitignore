@@ -58,10 +58,7 @@ geckodriver.log
 datasets/*
 *.pth
 *.png
-*.txt
 *.npy
 *.zip
 *.pkl
 *.pdf
-
-
