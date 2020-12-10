@@ -108,6 +108,18 @@ def save_ckpt(epoch, model, optimizer, scheduler, best_TA, best_ATA, training_lo
         'val_ATA': val_ATA,
     }
     torch.save(ckpt, path)
+    
+def save_original_ckpt(epoch, model, optimizer, scheduler, best_TA, training_loss, val_TA, path):
+    ckpt = {
+        'epoch': epoch,
+        'model': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        'best_TA': best_TA,
+        'training_loss': training_loss,
+        'val_TA': val_TA,
+    }
+    torch.save(ckpt, path)
 
 def load_ckpt(model, optimizer, scheduler, path):
     if not os.path.isfile(path):
