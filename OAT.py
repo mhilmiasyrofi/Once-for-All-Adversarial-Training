@@ -100,7 +100,9 @@ if args.probs > 0:
     lambda_str += '-%s' % args.probs
 if args.encoding in ['onehot', 'dct', 'rand']:
     lambda_str += '-%s-d%s' % (args.encoding, args.dim)
-save_folder = os.path.join('results', 'cifar10', model_str, '%s_%s_%s_%s' % (attack_str, opt_str, decay_str, lambda_str))
+save_folder = os.path.join('results', 'cifar10', model_str, '%s_%s_%s_%s' % (args.adversarial_data, opt_str, decay_str, lambda_str))
+
+print("save folder: ")
 print(save_folder)
 create_dir(save_folder)
 
