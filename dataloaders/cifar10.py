@@ -63,7 +63,7 @@ def get_adversarial_images(adversarial_data="autoattack", batch_size=64) :
     train_path = adv_dir + "train.pth" 
     test_path = adv_dir + "test.pth"
     
-    if adversarial_data in ["apgd", "autoattack", "bim", "cw", "deepfool", "fgsm", "pgd", "newtonfool", "jsma", "spatialtransformation", "squareattack"] :
+    if adversarial_data in ["autoattack", "autopgd", "bim", "cw", "deepfool", "fgsm", "pgd", "newtonfool", "pixelattack", "spatialtransformation", "squareattack"] :
         adv_train_data = torch.load(train_path)
         train_adv_images = adv_train_data["adv"]
         train_adv_labels = adv_train_data["label"]
@@ -82,21 +82,21 @@ def get_adversarial_images(adversarial_data="autoattack", batch_size=64) :
     else :
         raise ValueError("Unknown adversarial data")
         
-    print("")
-    print("Train Adv Attack Data: ", adversarial_data)
-    print("Dataset shape: ", train_adv_images.shape)
-    print("Dataset type: ", type(train_adv_images))
-    print("Label shape: ", len(train_adv_labels))
-    print("")
+#     print("")
+#     print("Train Adv Attack Data: ", adversarial_data)
+#     print("Dataset shape: ", train_adv_images.shape)
+#     print("Dataset type: ", type(train_adv_images))
+#     print("Label shape: ", len(train_adv_labels))
+#     print("")
     
     train_adv_set = list(zip(train_adv_images,
         train_adv_labels))
     
-    train_adv_batches = Batches(train_adv_set, batch_size, shuffle=True, set_random_choices=False, num_workers=0)
+    train_adv_batches = Batches(train_adv_set, batch_size, shuffle=True, set_random_choices=False, num_workers=0, drop_last=True)
     
     test_robust_set = list(zip(test_robust_images,
         test_robust_labels))
         
-    test_robust_batches = Batches(test_robust_set, batch_size, shuffle=True, num_workers=0)
+    test_robust_batches = Batches(test_robust_set, batch_size, shuffle=True, num_workers=0, drop_last=True)
 
     return train_adv_batches, test_robust_batches
