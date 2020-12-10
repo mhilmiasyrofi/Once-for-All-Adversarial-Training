@@ -22,15 +22,6 @@ for a in ${adv[@]}; do
         --use2BN
 done
 
-
-# python OAT.py \
-#     --adversarial_data deepfool \
-#     --dataset cifar10 \
-#     --batch_size 100 \
-#     --epochs 30 \
-#     --use2BN
-
-
 python train.py \
     --adversarial_data deepfool \
     --dataset cifar10 \
