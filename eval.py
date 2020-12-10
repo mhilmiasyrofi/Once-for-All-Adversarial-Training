@@ -6,9 +6,10 @@ import torch
 import torch.nn.functional as F
 from torch.optim import SGD, Adam, lr_scheduler
 
-from models.cifar10.resnet_OAT import ResNet34OAT
-from models.svhn.wide_resnet_OAT import WRN16_8OAT
-from models.stl10.wide_resnet_OAT import WRN40_2OAT
+from models.cifar10.resnet18_OAT import ResNet18OAT
+# from models.cifar10.resnet_OAT import ResNet34OAT
+# from models.svhn.wide_resnet_OAT import WRN16_8OAT
+# from models.stl10.wide_resnet_OAT import WRN40_2OAT
 
 from dataloaders.cifar10 import cifar10_dataloaders, get_adversarial_images
 from dataloaders.svhn import svhn_dataloaders
@@ -73,11 +74,11 @@ if args.encoding in ['onehot', 'dct', 'rand']:
 else: # non encoding
     FiLM_in_channels = 1
 if args.dataset == 'cifar10':
-    model_fn = ResNet34OAT
-elif args.dataset == 'svhn':
-    model_fn = WRN16_8OAT
-elif args.dataset == 'stl10':
-    model_fn = WRN40_2OAT
+    model_fn = ResNet18OAT
+# elif args.dataset == 'svhn':
+#     model_fn = WRN16_8OAT
+# elif args.dataset == 'stl10':
+#     model_fn = WRN40_2OAT
 model = model_fn(use2BN=args.use2BN, FiLM_in_channels=FiLM_in_channels).cuda()
 model = torch.nn.DataParallel(model)
 # for name, p in model.named_parameters():
@@ -142,10 +143,17 @@ if args.decay == 'cos':
 elif args.decay == 'multisteps':
     scheduler = lr_scheduler.MultiStepLR(optimizer, args.decay_epochs, gamma=0.1)
 
-if args.train_adversarial != "original" :
+if args.train_adversarial == "original" :
+    # load pretrained model
+    pretrained_path = "results/cifar10/ResNet18OAT-2BN/original_e50-b100_sgd-lr0.1-m0.9-wd0.0005_cos_disc-ew-[0.0, 0.1, 0.2, 0.3, 0.4, 1.0]-rand-d128/best_TA1.0.pth"
+    state_dict = torch.load(pretrained_path)
+    model.load_state_dict(state_dict)
+else :
+    # load adversarially trained model
     last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
          = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
     start_epoch = last_epoch + 1
+    
 
 
 # attacker:
