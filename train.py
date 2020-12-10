@@ -82,6 +82,15 @@ model = torch.nn.DataParallel(model)
 # for name, p in model.named_parameters():
 #     print(name, p.size())
 
+
+print("Load pretrained model")
+pretrained_path = "results/cifar10/ResNet18OAT-2BN/original_e50-b100_sgd-lr0.1-m0.9-wd0.0005_cos_disc-ew-[0.0, 0.1, 0.2, 0.3, 0.4, 1.0]-rand-d128/best_TA1.0.pth"
+state_dict = torch.load(pretrained_path)
+# pretrained_path = "results/cifar10/ResNet18OAT-2BN/original_e50-b100_sgd-lr0.1-m0.9-wd0.0005_cos_disc-ew-[0.0, 0.1, 0.2, 0.3, 0.4, 1.0]-rand-d128/latest.pth"
+# state_dict = torch.load(pretrained_path)["model"]
+model.load_state_dict(state_dict)
+
+
 # mkdirs:
 model_str = os.path.join(model_fn.__name__)
 if args.use2BN:
@@ -139,17 +148,12 @@ if args.decay == 'cos':
 elif args.decay == 'multisteps':
     scheduler = lr_scheduler.MultiStepLR(optimizer, args.decay_epochs, gamma=0.1)
 
-# load ckpt:
-if args.resume:
-    last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
-         = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
-    start_epoch = last_epoch + 1
-else:
-    start_epoch = 0
-    # training curve lists:
-    training_loss, val_TA, val_ATA, best_TA, best_ATA = [], {}, {}, {}, {}
-    for val_lambda in val_lambdas:
-        val_TA[val_lambda], val_ATA[val_lambda], best_TA[val_lambda], best_ATA[val_lambda] = [], [], 0, 0
+
+start_epoch = 0
+# training curve lists:
+training_loss, val_TA, val_ATA, best_TA, best_ATA = [], {}, {}, {}, {}
+for val_lambda in val_lambdas:
+    val_TA[val_lambda], val_ATA[val_lambda], best_TA[val_lambda], best_ATA[val_lambda] = [], [], 0, 0
 
 # attacker:
 # attacker = PGD(eps=args.eps/255, steps=args.steps, use_FiLM=True)
