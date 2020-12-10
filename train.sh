@@ -29,3 +29,11 @@ done
 #     --batch_size 100 \
 #     --epochs 30 \
 #     --use2BN
+
+
+python train.py \
+    --adversarial_data deepfool \
+    --dataset cifar10 \
+    --batch_size 100 \
+    --epochs 1 \
+    --use2BN

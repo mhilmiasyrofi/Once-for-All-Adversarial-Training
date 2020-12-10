@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np 
-from models.slimmable_ops import width_mult_list, SlimmableLinear
+from .slimmable_ops import width_mult_list, SlimmableLinear
 
 class FiLM_Layer(nn.Module):
     def __init__(self, channels, in_channels=1, alpha=1, activation=F.leaky_relu):

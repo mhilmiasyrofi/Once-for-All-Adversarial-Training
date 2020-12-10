@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from models.slimmable_ops import width_mult_list, SlimmableBatchNorm2d
+from .slimmable_ops import width_mult_list, SlimmableBatchNorm2d
 
 class DualBN2d(nn.Module):
     '''

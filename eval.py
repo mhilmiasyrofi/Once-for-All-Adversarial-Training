@@ -104,9 +104,11 @@ if args.encoding in ['onehot', 'dct', 'rand']:
     lambda_str += '-%s-d%s' % (args.encoding, args.dim)
 save_folder = os.path.join('results', 'cifar10', model_str, '%s_%s_%s_%s' % (args.train_adversarial, opt_str, decay_str, lambda_str))
 
+
 print("save folder: ")
 print(save_folder)
-# create_dir(save_folder)
+if args.train_adversarial == "original" :
+    create_dir(save_folder)
 
 # encoding matrix:
 if args.encoding == 'onehot':
@@ -141,9 +143,11 @@ if args.decay == 'cos':
 elif args.decay == 'multisteps':
     scheduler = lr_scheduler.MultiStepLR(optimizer, args.decay_epochs, gamma=0.1)
 
-last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
-     = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
-start_epoch = last_epoch + 1
+if args.train_adversarial != "original" :
+    last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
+         = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
+    start_epoch = last_epoch + 1
+
 
 # attacker:
 # attacker = PGD(eps=args.eps/255, steps=args.steps, use_FiLM=True)
@@ -188,12 +192,7 @@ for i, (batch, adv_batch) in enumerate(zip(test_loader,test_adv_loader)):
         # TA:
         logits = model(imgs, _lambda, idx2BN)
         val_accs[val_lambda].append((logits.argmax(1) == labels).float().mean().item())
-        # ATA:
-        # generate adversarial images:
-        # with ctx_noparamgrad_and_eval(model):
-        #     imgs_adv = attacker.attack(model, imgs, labels=labels, _lambda=_lambda, idx2BN=idx2BN)
-        # linf_norms = (imgs_adv - imgs).view(imgs.size()[0], -1).norm(p=np.Inf, dim=1)
-        # logits_adv = model(imgs_adv.detach(), _lambda, idx2BN)
+
         logits_adv = model(adv_imgs, _lambda, idx2BN)
         val_accs_adv[val_lambda].append((logits_adv.argmax(1) == adv_labels).float().mean().item())
 

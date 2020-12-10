@@ -1,7 +1,10 @@
-# declare -a train=("autoattack" "autopgd" "bim" "cw" "deepfool" "fgsm")
+# declare -a train=("autoattack" "autopgd" "bim" "cw")
 # declare -a test=("autoattack" "autopgd" "bim" "cw" "deepfool" "fgsm" "newtonfool" "pgd" "pixelattack" "spatialtransformation" "squareattack")
 
-declare -a train=("newtonfool" "pgd" "pixelattack" "spatialtransformation" "squareattack")
+# declare -a train=("original" "deepfool" "fgsm" "newtonfool")
+# declare -a test=("autoattack" "autopgd" "bim" "cw" "deepfool" "fgsm" "newtonfool" "pgd" "pixelattack" "spatialtransformation" "squareattack")
+
+declare -a train=("pgd" "pixelattack" "spatialtransformation" "squareattack")
 declare -a test=("autoattack" "autopgd" "bim" "cw" "deepfool" "fgsm" "newtonfool" "pgd" "pixelattack" "spatialtransformation" "squareattack")
 
 
