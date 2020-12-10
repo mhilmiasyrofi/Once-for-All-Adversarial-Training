@@ -17,7 +17,6 @@ from dataloaders.stl10 import stl10_dataloaders
 from utils.utils import *
 from utils.context import ctx_noparamgrad_and_eval
 from utils.sample_lambda import element_wise_sample_lambda, batch_wise_sample_lambda
-# from attacks.pgd import PGD
 
 parser = argparse.ArgumentParser(description='cifar10 Training')
 parser.add_argument('--gpu', default='7')
