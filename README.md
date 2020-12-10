@@ -13,6 +13,18 @@ We also extend from OAT to OATS, that enables a joint in-situ trade-off among ro
 
 Experimental results show that OAT/OATS achieve similar or even superior performance, when compared to traditional dedicatedly trained robust models. Our approaches meanwhile cost only one model and no re-training. In other words, they are **free but no worse**.
 
+
+## Docker preparation
+
+```
+docker pull pytorch/pytorch:1.5.1-cuda10.1-cudnn7-devel
+
+docker run --name gpu0-oat-training --rm --gpus '"device=0"' -it -v ~/Documents/Once-for-All-Adversarial-Training/:/workspace/Once-for-All-Adversarial-Training/ pytorch/pytorch:1.5.1-cuda10.1-cudnn7-devel 
+
+pip install -r requirements.txt
+
+```
+
 ## Framework
 <p align="center">
 <img src="Framework.PNG" width="800"/></br>
