@@ -102,13 +102,14 @@ if args.probs > 0:
     lambda_str += '-%s' % args.probs
 if args.encoding in ['onehot', 'dct', 'rand']:
     lambda_str += '-%s-d%s' % (args.encoding, args.dim)
-save_folder = os.path.join('results', 'cifar10', model_str, '%s_%s_%s_%s' % (args.train_adversarial, opt_str, decay_str, lambda_str))
+save_folder = os.path.join('results', 'cifar10', model_str, '%s_%s_%s_%s/' % (args.train_adversarial, opt_str, decay_str, lambda_str))
 
 
-print("save folder: ")
-print(save_folder)
 if args.train_adversarial == "original" :
     create_dir(save_folder)
+    
+print("save folder: ")
+print(save_folder)
 
 # encoding matrix:
 if args.encoding == 'onehot':
@@ -150,21 +151,27 @@ if args.train_adversarial == "original" :
     model.load_state_dict(state_dict)
 else :
     # load adversarially trained model
-    last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
-         = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
-    start_epoch = last_epoch + 1
-    
+#     last_epoch, best_TA, best_ATA, training_loss, val_TA, val_ATA \
+#          = load_ckpt(model, optimizer, scheduler, os.path.join(save_folder, 'latest.pth'))
+#     start_epoch = last_epoch + 1
+    pretrained_path = save_folder + "best_TA1.0.pth"
+    state_dict = torch.load(pretrained_path)
+    model.load_state_dict(state_dict)
 
 
 # attacker:
 # attacker = PGD(eps=args.eps/255, steps=args.steps, use_FiLM=True)
 attacker = None
 
-eval_folder = os.path.join(save_folder, 'eval/')
+eval_folder = os.path.join(save_folder, "eval/" + args.test_adversarial + "/")
 create_dir(eval_folder)
 
+if not os.path.exists(eval_folder):
+    print("Make dirs: ", eval_folder)
+    os.makedirs(eval_folder)
 
-val_fp = open(os.path.join(eval_folder, args.test_adversarial + '.txt'), 'a+')
+
+val_fp = open(os.path.join(eval_folder, 'output.txt'), 'a+')
 start_time = time.time()
 
 ## validation:
@@ -175,7 +182,14 @@ val_accs, val_accs_adv = {}, {}
 for val_lambda in val_lambdas:
     val_accs[val_lambda], val_accs_adv[val_lambda] = AverageMeter(), AverageMeter()
     
-val_lambdas = [1.]
+j = 5
+val_lambda = 1.
+
+y_original = np.array([])
+y_original_pred = np.array([])
+
+y_adv = np.array([])
+y_adv_pred = np.array([])
 
 for i, (batch, adv_batch) in enumerate(zip(test_loader,test_adv_loader)):
     imgs = batch["input"]
@@ -184,28 +198,58 @@ for i, (batch, adv_batch) in enumerate(zip(test_loader,test_adv_loader)):
     adv_imgs = adv_batch["input"]
     adv_labels = adv_batch["target"]
 
-    for j, val_lambda in enumerate(val_lambdas):
-        # sample _lambda:
-        if args.distribution == 'disc' and encoding_mat is not None:
-            _lambda = np.expand_dims( np.repeat(j, labels.size()[0]), axis=1 ).astype(np.uint8)
-            _lambda = encoding_mat[_lambda,:] 
-        else:
-            _lambda = np.expand_dims( np.repeat(val_lambda, labels.size()[0]), axis=1 )
-        _lambda = torch.from_numpy(_lambda).float().cuda()
-        if args.use2BN:
-            idx2BN = int(labels.size()[0]) if val_lambda==0 else 0
-        else:
-            idx2BN = None
-        # TA:
-        logits = model(imgs, _lambda, idx2BN)
-        val_accs[val_lambda].append((logits.argmax(1) == labels).float().mean().item())
+    # sample _lambda:
+    if args.distribution == 'disc' and encoding_mat is not None:
+        _lambda = np.expand_dims( np.repeat(j, labels.size()[0]), axis=1 ).astype(np.uint8)
+        _lambda = encoding_mat[_lambda,:] 
+    else:
+        _lambda = np.expand_dims( np.repeat(val_lambda, labels.size()[0]), axis=1 )
+    _lambda = torch.from_numpy(_lambda).float().cuda()
+    if args.use2BN:
+        idx2BN = int(labels.size()[0]) if val_lambda==0 else 0
+    else:
+        idx2BN = None
+    # TA:
+    logits = model(imgs, _lambda, idx2BN)
+    val_accs[val_lambda].append((logits.argmax(1) == labels).float().mean().item())
 
-        logits_adv = model(adv_imgs, _lambda, idx2BN)
-        val_accs_adv[val_lambda].append((logits_adv.argmax(1) == adv_labels).float().mean().item())
+    logits_adv = model(adv_imgs, _lambda, idx2BN)
+    val_accs_adv[val_lambda].append((logits_adv.argmax(1) == adv_labels).float().mean().item())
+    
+    y_original = np.append(y_original, labels.cpu().numpy())
+    y_original_pred = np.append(y_original_pred, logits.max(1)[1].cpu().numpy())
+    
+    y_adv = np.append(y_adv, adv_labels.cpu().numpy())
+    y_adv_pred = np.append(y_adv_pred, logits_adv.max(1)[1].cpu().numpy())
+
+
+y_original = y_original.astype(np.int)
+y_original_pred = y_original_pred.astype(np.int)
+
+y_adv = y_adv.astype(np.int)
+y_adv_pred = y_adv_pred.astype(np.int)    
+
+print("y_original")
+print(y_original)
+np.savetxt(os.path.join(eval_folder, "y_original.txt"), y_original,  fmt='%i')
+
+print("y_original_pred")
+print(y_original_pred)
+np.savetxt(os.path.join(eval_folder, "y_original_pred.txt"), y_original_pred, fmt='%i')
+
+print("y_adv")
+print(y_adv)
+np.savetxt(os.path.join(eval_folder, "y_adv.txt"), y_adv, fmt='%i')
+
+print("y_adv_pred")
+print(y_adv_pred)
+np.savetxt(os.path.join(eval_folder, "y_adv_pred.txt"), y_adv_pred, fmt='%i')
 
 val_str = 'Validation | Time: %.4f\n' % ((time.time()-start_time))
-for val_lambda in val_lambdas:
-    val_str += 'val_lambda%s: TA: %.4f, ATA: %.4f\n' % (val_lambda, val_accs[val_lambda].avg, val_accs_adv[val_lambda].avg)
+# for val_lambda in val_lambdas:
+#     val_str += 'val_lambda%s: TA: %.4f, ATA: %.4f\n' % (val_lambda, val_accs[val_lambda].avg, val_accs_adv[val_lambda].avg)
+val_str += 'val_lambda-%s: TA: %.4f, ATA: %.4f\n' % (val_lambda, val_accs[val_lambda].avg, val_accs_adv[val_lambda].avg)
+
 print(val_str)
 val_fp.write(val_str + '\n')
 val_fp.close() # close file pointer
