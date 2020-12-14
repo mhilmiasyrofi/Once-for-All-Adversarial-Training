@@ -59,7 +59,7 @@ def get_adversarial_images(adversarial_data="autoattack", batch_size=64) :
     test_robust_images = None
     test_robust_labels = None
 
-    adv_dir = "adv_examples/{}/".format(adversarial_data)
+    adv_dir = "oat_adv_examples/{}/".format(adversarial_data)
     train_path = adv_dir + "train.pth" 
     test_path = adv_dir + "test.pth"
     
